@@ -1,4 +1,4 @@
-// --- REFERENCIAS DEL DOM ---
+﻿// --- REFERENCIAS DEL DOM ---
 const messageList = document.getElementById('messageList');
 const userInput = document.getElementById('userInput');
 const mascotImage = document.getElementById('mascotImage');
@@ -27,146 +27,479 @@ let talkInterval;
 
 // --- MEMORIA DEL AGENTE ---
 let memory = {
+    userName: null,
     greetings: 0,
-    howAreYou: 0
+    howAreYou: 0,
+    interestedCareer: null,
+    consecutiveFails: 0
 };
 
-// --- BASE DE CONOCIMIENTO (Reglas, Patrones y Handlers de NLP) ---
+// --- UTILIDADES ---
+// Almacena el último índice seleccionado para cada array, garantizando que NUNCA repita la misma frase dos veces seguidas.
+const lastChoices = new WeakMap();
+
+const smartRandomChoice = (arr) => {
+    if (!arr || arr.length === 0) return "";
+    if (arr.length === 1) return arr[0];
+
+    const lastIndex = lastChoices.has(arr) ? lastChoices.get(arr) : -1;
+    let newIndex;
+    
+    // Garantizar matemáticamente anti-repetición Turing
+    do {
+        newIndex = Math.floor(Math.random() * arr.length);
+    } while (newIndex === lastIndex);
+
+    lastChoices.set(arr, newIndex);
+    return arr[newIndex];
+};
+
+// --- MOTOR DE PROCESAMIENTO DE LENGUAJE NATURAL (NLP) AVANZADO ---
 const knowledgeBase = [
+    // 1. Identidad y Nombre del Usuario
     {
-        keywords: ["hola", "buenos dias", "buenas tardes", "buenas noches", "saludos", "hey", "que onda", "holi"],
+        pattern: /(?:me llamo|mi nombre es|soy) (\w+)/i,
+        fuzzyKeywords: ["llamo", "nombre", "soy"],
+        handler: (match) => {
+            memory.userName = match && match[1] ? match[1] : null;
+            if (memory.userName) {
+                return smartRandomChoice([
+                    `¡Mucho gusto, ${memory.userName}! Qué bonito nombre. ¿En qué te puedo ayudar hoy?`,
+                    `¡Hola ${memory.userName}! Ya me aprendí tu nombre. Dime, ¿qué necesitas consultar del ITESCO?`,
+                    `Perfecto, te llamaré ${memory.userName}. ¡Dime! ¿Qué te trae por aquí?`,
+                    `¡Bienvenido al sistema, ${memory.userName}! Soy todo oídos. `
+                ]);
+            }
+            return "¡Mucho gusto! Siendo una IA a veces me cuesta pescar los nombres a la primera... ¿en qué te ayudo?";
+        }
+    },
+    // 2. Tiempo y Fecha
+    {
+        pattern: /\b(hora|hora es|que hora|tienes hora|hora actual)\b/i,
+        fuzzyKeywords: ["hora", "reloj", "tiempo"],
+        handler: () => {
+            const time = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+            return smartRandomChoice([
+                ` Según mi reloj interno, son las ${time}. ¡El tiempo vuela cuando programas!`,
+                `Son exactamente las ${time}. Ideal para seguir estudiando.`,
+                `Mi procesador me indica que marcan las ${time}. ¿Necesitas ayuda con algo más?`,
+                `El servidor registra las ${time} en este instante. `
+            ]);
+        }
+    },
+    {
+        pattern: /\b(dia es|fecha de hoy|que dia estamos|que dia es hoy)\b/i,
+        fuzzyKeywords: ["hoy", "dia", "actual", "estamos"],
+        handler: () => {
+            const date = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            return smartRandomChoice([
+                ` Hoy es ${date}. Un excelente día para avanzar profesionalmente.`,
+                `La fecha actual del sistema es ${date}. ¿En qué te asesoro hoy?`,
+                `Estamos a ${date}. Recuerda siempre estar atento al calendario escolar.`
+            ]);
+        }
+    },
+    // 3. Saludos
+    {
+        pattern: /\b(hola|buenos dias|buenas tardes|buenas noches|saludos|hey|que onda|holi|que tal)\b/i,
+        fuzzyKeywords: ["hola", "buenos", "dias", "tardes", "noches", "saludos", "onda"],
         handler: () => {
             memory.greetings++;
-            if (memory.greetings === 1) {
-                return "¡Hola! Qué gusto saludarte. Soy Jaguarundi, tu Agente Inteligente. ¿Tienes dudas sobre requisitos o algún trámite de inscripción en ITESCO?";
-            } else {
-                return "¡Hola otra vez! ¡Qué excelente estoy para atenderte! Dime, ¿en qué más te puedo apoyar hoy? 😊";
+            if (memory.userName) {
+                return smartRandomChoice([
+                    `¡Hola de nuevo, ${memory.userName}! ¿En qué te ayudo esta vez?`,
+                    `¡Qué gusto verte por aquí otra vez, ${memory.userName}! Dime tus dudas.`,
+                    `¡Hola ${memory.userName}! Listo para darte información administrativa o escolar.`
+                ]);
             }
+            if (memory.greetings === 1) {
+                return smartRandomChoice([
+                    "¡Hola! Qué gusto saludarte. Soy Jaguarundi, la Inteligencia Artificial del ITESCO. ¿Tienes alguna pregunta en la que pueda apoyarte?",
+                    "¡Buen día! Aquí Jaguarundi, tu asistente virtual. Puedo informarte sobre admisiones y la variada oferta educativa del tecnológico.",
+                    "¡Saludos! Soy el asistente virtual oficial del Tec. Pregúntame sobre cualquier carrera tecnológica de nuestra familia ITESCO."
+                ]);
+            }
+            return smartRandomChoice([
+                "¡Hola otra vez! ¿Hay algún otro tema que quieras explorar?",
+                "Dime, ¿en qué te puedo apoyar ahora? ",
+                "¡Saludos nuevamente! ¿Buscamos alguna información específica de inscripciones o materias?",
+                "¡Hey! Sigo en línea, preparado para aclarar todo sobre tu estancia universitaria."
+            ]);
         }
     },
+    // 4. Estímulos Conversacionales
     {
-        keywords: ["como estas", "que tal", "como te va", "como andas", "como te sientes"],
+        pattern: /\b(como estas|como te va|como andas|que haces)\b/i,
+        fuzzyKeywords: ["estas", "andas", "haces", "sientes"],
         handler: () => {
             memory.howAreYou++;
-            return "¡Muy bien! Gracias por preguntar. ¿Y tú, qué necesitas esta vez? Estoy listo para darte la mejor asesoría en tus procesos escolares.";
+            return smartRandomChoice([
+                "¡A máxima capacidad de procesamiento! ¿Y tú cómo estás?",
+                "Muy bien, gracias por preguntar. ¡Ansioso por procesar consultas de nuestros alumnos!",
+                "¡De maravilla! Aquí indexando artículos de la web del ITESCO. ¿En qué te apoyo?",
+                "Con los engranes bien lubricados y los transistores cargados.  ¿Listo para ver las ingenierías?"
+            ]);
         }
     },
     {
-        keywords: ["quien eres", "que eres", "como te llamas", "cual es tu nombre", "eres un bot", "eres una ia", "inteligencia artificial"],
-        response: "Soy <b>Jaguarundi</b>, un Agente Inteligente Conversacional 🤖 especializado en los procesos del Tecnológico (ITESCO). Mi base de conocimiento me permite ayudarte de forma rápida y eficiente. 🐾"
+        pattern: /\b(bien|excelente|muy bien|super|genial|perfecto)\b/i,
+        fuzzyKeywords: ["bien", "excelente", "super", "genial", "perfecto"],
+        handler: () => smartRandomChoice([
+            "¡Me alegra muchísimo! ¿Hay alguna carrera del ITESCO que te llame la atención?",
+            "¡Qué buena actitud! A ver, cuéntame, ¿tienes dudas puntuales sobre nuestra institución?",
+            "Me da mucho gusto oírlo (o leerlo, en este caso ). ¿Te gustaría hablar sobre el sistema Escolarizado o el modelo en Línea?",
+            "¡Formidable! Si sientes curiosidad, pídeme información de cómo sacar ficha de admisión."
+        ])
     },
     {
-        keywords: ["gracias", "muchas gracias", "te lo agradezco", "excelente", "perfecto", "ok", "vale", "entendido"],
-        response: "¡Para eso estoy! Ha sido un placer. Si en algún otro momento necesitas ayuda, aquí seguiré para ti. ¡Mucho éxito en tu carrera! 🚀"
+        pattern: /\b(mal|triste|cansado|estresado|enojado)\b/i,
+        fuzzyKeywords: ["mal", "triste", "cansado", "estresado", "enojado"],
+        handler: () => smartRandomChoice([
+            "Oh, lamento mucho escuchar eso. Si sientes estrés por trámites, yo puedo quitarte la carga de buscar información y dártela resumida. ¿Qué trámite te tiene agobiado?",
+            "Comprendo. La vida universitaria a veces pesa, pero todo esfuerzo rinde frutos. ¿Te sirvo de ayuda agilizando una búsqueda escolar?",
+            "Un buen descanso de la pantalla hace maravillas. Cuando estés menos abrumado, aquí estaré listo para dar fechas o requisitos."
+        ])
+    },
+    // 5. Existenciales / Identidad del Bot
+    {
+        pattern: /\b(quien eres|que eres|como te llamas|eres un bot|eres ia|inteligencia artificial)\b/i,
+        fuzzyKeywords: ["quien", "eres", "llamas", "bot", "inteligencia", "ia"],
+        handler: () => smartRandomChoice([
+            "¡Soy 100% Inteligencia Artificial!  Me llamo Jaguarundi y vivo en los servidores para apoyar de inmediato a los preuniversitarios del ITESCO. ",
+            "Soy un Agente Conversacional construido para agilizar reportes académicos. Respondo tan rápido como mi procesador neural me lo permite.",
+            "Muchos me ven como la mascota, ¡pero soy tu asistente! Jaguarundi IA, respondiendo a toda velocidad preguntas frecuentes de inscripciones.",
+            "No tengo cuerpo, solo código. Vivo en el portal del Instituto Tecnológico Superior de Coatzacoalcos para orientar a alumnos."
+        ])
     },
     {
-        keywords: ["donde busco", "donde encuentro", "pagina", "link", "enlace", "sitio web", "portal", "donde me inscribo", "como me inscribo", "informacion", "convocatoria"],
-        response: "🌐 Toda la información oficial, las convocatorias vigentes y la plataforma para tramitar tu ficha de nuevo ingreso la encuentras en nuestro portal web: <br><br>👉 <a href='https://www.itesco.edu.mx/' target='_blank' style='color: #d35400; font-weight: bold; text-decoration: none;'>Portal Oficial ITESCO</a><br>👉 <a href='http://fichas.itesco.edu.mx/' target='_blank' style='color: #d35400; font-weight: bold; text-decoration: none;'>Plataforma de Fichas (Aspirantes)</a>"
+        pattern: /\b(quien te creo|creador|de donde vienes|naciste)\b/i,
+        fuzzyKeywords: ["creo", "creador", "naciste", "origen", "inventor"],
+        handler: () => smartRandomChoice([
+            "Fui desarrollado por una gran colaboración de ingenieros de esta gloriosa institución. ¡La automatización al servicio estudiantil!",
+            "El ITESCO me concibió con la visión de hacer sus interacciones digitales más ricas. Soy la evolución de la asistencia tradicional.",
+            "Vengo de docenas de líneas de código escritas por personas que quieren ver crecer al tecnológico."
+        ])
+    },
+    // 6. Humor
+    {
+        pattern: /\b(chiste|broma|aburrido|chistoso|hazme reir|cuentame algo)\b/i,
+        fuzzyKeywords: ["chiste", "broma", "reir", "chistoso", "aburrido"],
+        handler: () => smartRandomChoice([
+            "¿Qué le dice un bit a otro? ... ¡Nos vemos en el bus! ",
+            "Hay 10 tipos de personas en el mundo: Las que entienden binario, y las que no. ",
+            "¿Por qué los programadores prefieren la oscuridad? ... ¡Porque los bichos (bugs) se ven con la luz! ",
+            "Un administrador de base de datos entra a un bar, va a unas mesas, y dice: '¿Me puedo hacer un Join?' "
+        ])
+    },
+    // 7. ITESCO - Oferta Educativa General y Modalidades
+    {
+        pattern: /\b(que carreras|carreras ofrecen|oferta educativa|licenciaturas|ingenierias|que puedo estudiar|que materias)\b/i,
+        fuzzyKeywords: ["carreras", "ofrecen", "oferta", "educativa", "ingenierias", "licenciaturas", "estudiar"],
+        handler: () => smartRandomChoice([
+            " En ITESCO manejamos programas de excelencia: Animación Digital, Bioquímica, Eléctrica, Electrónica, Gestión Empresarial, Semiconductores, Sistemas Computacionales, Ferroviaria, Industrial, Mecatrónica, Informática y la Licenciatura en Administración.",
+            "Nuestra impresionante oferta incluye Ingeniería Ferroviaria, Semiconductores, Animación Digital, Bioquímica, Eléctrica, Electrónica, Mecatrónica e Industrial. ¡Además de áreas administrativas como Gestión y la Lic. en Administración! ",
+            "Aquí puedes ser Ingeniero en Sistemas, Informática, Mecatrónica, Industrial, Animación, o también especializarte en Ferroviaria y Semiconductores. Todo presencial o en línea.",
+            "¿Buscas innovación? Prueba Semiconductores, Ferroviaria o Animación Digital. ¿Cimientos sólidos? Sistemas, Gestión, Administración, Eléctrica, Bioquímica, Informática, Industrial o Mecatrónica. ¡Todas en ITESCO!"
+        ])
     },
     {
-        keywords: ["inscripcion", "inscribirme", "inscribir", "nuevo ingreso", "requisitos"],
-        response: "✅ ¡Perfecto! Para la inscripción de <b>Nuevo Ingreso</b> requieres:<br><ul style='margin-left: 20px; margin-top: 10px;'><li>Acta de Nacimiento Original y copia.</li><li>CURP actualizado.</li><li>Certificado de Bachillerato.</li><li>Número de Seguridad Social (NSS) validado.</li><li>2 Fotografías tamaño infantil.</li></ul><br>Recuerda que las fechas de <b>Inscripciones oficiales son el 1 de septiembre</b>."
+        pattern: /\b(distancia|en linea|virtual|sabados|no escolarizado|modalidad|modalidades|modelo de estudio|sabatino)\b/i,
+        fuzzyKeywords: ["distancia", "linea", "virtual", "sabados", "escolarizado", "modalidad", "modelo", "estudio", "modalidades"],
+        handler: () => smartRandomChoice([
+            "👨‍ Ofrecemos tres grandes esquemas de estudio: Sistema Escolarizado tradicional (lunes a viernes), Sistema No Escolarizado (sábados) y el recién lanzado 'Educación a Distancia' (virtual). Lo adaptas totalmente a ti.",
+            "Las Convocatorias ahora incluyen 'Ingenierías en Línea' que benefician especialmente a estudiantes que trabajan. ¡La mejor calidad académica sin afectar tu empleo!",
+            "Contamos con modalidades presenciales e híbridas sabatinas (Sistema No Escolarizado) así como modelos Completamente en Línea, ideales para la formación técnica con alta flexibilidad."
+        ])
     },
     {
-        keywords: ["convalidacion", "reingreso", "traslado", "equivalencia", "villahermosa", "cambio de escuela"],
-        response: "¡Entendido perfectamente! Para tu caso, el proceso es la <b>Convalidación de Estudios</b>. Pide en tu instituto de origen:<br><ul style='margin-left: 20px; margin-top: 10px;'><li>Oficio de No Adeudo.</li><li>Certificado Parcial.</li><li>Programas de Estudio sellados de todas tus materias.</li></ul><br>Debes llevarlos a tu Jefatura de Carrera aquí. ¡Consúltalo primero con el Coordinador de Carrera antes de pagar en caja!"
+        pattern: /\b(quiero estudiar|me interesa|me llama la atencion) (.+)\b/i,
+        handler: (match) => {
+            if(match && match[2]){
+                memory.interestedCareer = match[2].trim();
+                return smartRandomChoice([
+                    `¡Wow! Apostar por ${memory.interestedCareer} te garantiza mucho campo laboral saliendo del ITESCO. ¿Tienes dudas con el temario, materias o requisitos de ingreso?`,
+                    `Excelente elección, ${memory.interestedCareer} tiene laboratorios muy equipados. Puedo orientarte en el registro de la Convocatoria.`,
+                    `El mundo necesita expertos en eso precisamente. En el Tec tenemos catedráticos especialistas que te impulsarán al éxito. ¿Qué deseas saber sobre admisiones?`,
+                    `Ese campo de estudio ha subido su demanda últimamente. Con la capacitación del ITESCO y el dominio de Inglés (A través del CLEI) saldrás preparadísimo.`
+                ]);
+            }
+            return "¡Genial! Estudiar en el ITESCO es tu mejor opción tecnológica. ¿Qué área exacta te llama la atención?";
+        }
+    },
+    // 8. ITESCO - Requisitos de Inscripción Exactos (Fijos para no variar)
+    {
+        pattern: /\b(inscripcion|inscribirme|reinscripcion|reinscribirme|requisito|requisitos|documentos necesito|documentacion|papeles|que ocupo para)\b/i,
+        fuzzyKeywords: ["inscripcion", "reinscripcion", "inscribirme", "requisitos", "ingresar", "documentos", "papeles"],
+        handler: () => {
+             // El usuario pidió que los requisitos "sean los mismos" (no variar la respuesta aleatoriamente), daremos una sola versión exacta:
+            return " El requisito indispensable para Nuevo Ingreso en el departamento de Servicios Escolares es presentar de manera presencial:\n1. Certificado de Bachillerato (legalizado)\n2. Acta de Nacimiento original\n3. CURP vigente\n4. Tu número de Alta del Seguro Social (NSS).";
+        }
+    },
+    // 9. ITESCO - Fichas Fechas Especializadas
+    {
+        pattern: /\b(fecha|fechas|fechas del examen|cuando es|calendario|cuando inicia)\b/i,
+        fuzzyKeywords: ["fecha", "fechas", "calendario", "cuando"],
+        handler: () => smartRandomChoice([
+            " Normalmente el proceso de entrega de fichas de admisión ocurre entre mayo, julio y agosto. El examen presencial y las inscripciones definitivas son en septiembre.",
+            "Para no perderte ninguna fecha importante, verifica nuestro calendario oficial en itesco.edu.mx. Tenemos convocatorias en agosto (presencial) y diciembre-enero (línea).",
+            "Las fechas de evaluación dependen del calendario federal. Si mantienes vigilado el sitio oficial, no se te pasará tu examen de admisión."
+        ])
+    },
+    // 10. ITESCO - Fichas y Admisión Convocatoria General Enero y Agosto
+    {
+        pattern: /\b(ficha|fichas|solicitud|admision|examen|quiero entrar|como entro|convocatoria|nuevo ingreso|ingreso)\b/i,
+        fuzzyKeywords: ["ficha", "fichas", "solicitud", "admision", "entrar", "examen", "ingreso", "convocatoria"],
+        handler: () => smartRandomChoice([
+            ` En ITESCO ofrecemos la convocatoria tradicional 'Agosto-Diciembre' para Nuevo Ingreso Presencial. Debes usar la plataforma oficial: <a href="http://sigea.itesco.edu.mx/aspirantes/registro.php" target="_blank" style="color: #007bff; font-weight: bold; text-decoration: underline;">Portal SIGEA (Fichas)</a>.`,
+            ` ¡Tenemos novedades! Además del Nuevo Ingreso de Agosto, contamos con Convocatorias para 'Enero'. Revisa el enlace oficial: <br><a href="http://sigea.itesco.edu.mx/aspirantes/registro.php" target="_blank" style="color: #007bff; font-weight: bold; text-decoration: underline;">Obtener mi Ficha Aquí</a>.`,
+            `El proceso inicia generando tu ficha de admisión en línea. Hay modalidades Escolarizada, No Escolarizada y a Distancia. Empieza tu trámite aquí: <a href="http://sigea.itesco.edu.mx/aspirantes/registro.php" target="_blank" style="color: #007bff; text-decoration: underline;">Registro de Aspirantes</a>.`,
+            `Los pasos base: Ingresar a la liga oficial (<a href="http://sigea.itesco.edu.mx/aspirantes/registro.php" target="_blank" style="color: #007bff; text-decoration: underline;">sigea.itesco.edu.mx</a>), validar tus datos, e imprimir tu línea de captura OVH.`
+        ])
+    },
+    // 11. ITESCO - Carreras Detalles Altamente Variables Y Sub-Intenciones (Materias, Laboral, Conceptos)
+    {
+        // Regla Maestra Multidimensional: Lee qué buscan (materias, laboral, concepto) y de qué carrera.
+        pattern: /\b(materias|reticula|mapa curricular|que se ve|de que trata|que hacen|hacen|en que trabajan|trabajan|campo laboral) (de|en|la|el|las) (.*)\b/i,
+        handler: (match) => {
+            let intent = match[1].toLowerCase();
+            let career = match[3].toLowerCase();
+
+            // 1. Identificar Carrera
+            let isSistemas = career.includes("sistema") || career.includes("computacion") || career.includes("software");
+            let isMeca = career.includes("meca") || career.includes("robot");
+            let isQuimi = career.includes("quimi") || career.includes("bio");
+            let isInformatico = career.includes("informa");
+            let isAnimacion = career.includes("animaci") || career.includes("digital") || career.includes("efecto");
+            let isIndus = career.includes("industrial") || career.includes("procesos");
+            let isFerro = career.includes("ferro") || career.includes("tren");
+            let isSemi = career.includes("semi") || career.includes("conductor");
+            let isElec = career.includes("electri");
+            let isElectro = career.includes("electro");
+            let isAdmin = career.includes("admin") || career.includes("empresa");
+            let isGestion = career.includes("gestion") || career.includes("negocio");
+
+            // 2. Identificar Intención
+            let isMaterias = intent.includes("materia") || intent.includes("reticula") || intent.includes("mapa");
+            let isQueSeVe = intent.includes("ve") || intent.includes("trata");
+            let isQueHacen = intent.includes("hacen") || intent.includes("trabaja") || intent.includes("laboral");
+
+            if (isSistemas) {
+                if (isMaterias) return " En Sistemas Computacionales llevarás materias del mapa curricular como: Cálculo Diferencial, Programación Orientada a Objetos, Estructura de Datos, Redes de Computadoras e Inteligencia Artificial.";
+                if (isQueSeVe) return " En la carrera de Sistemas se ve todo lo relacionado con la Arquitectura de Computadoras, el desarrollo de Software y la ciberseguridad. Aprenderás a resolver problemas complejos transformándolos en código.";
+                if (isQueHacen) return " Un Ingeniero en Sistemas del ITESCO diseña plataformas web, administra bases de datos y suele trabajar como Desarrollador Full-Stack, Arquitecto Cloud o líder de proyectos TI.";
+            }
+            if (isMeca) {
+                if (isMaterias) return " En Mecatrónica cursarás Electromagnetismo, Circuitos Eléctricos, Control Lógico Avanzado (PLCs), Termodinámica y Robótica Industrial.";
+                if (isQueSeVe) return " En Mecatrónica se ve la fusión de la electrónica con el control mecánico. Aprenderás instrumentación avanzada para automatizar procesos e integrarlos mediante software.";
+                if (isQueHacen) return " Los mecatrónicos suelen dedicarse al mantenimiento industrial, diseño de brazos robóticos y operación de Controladores Numéricos (CNC) en plantas de manufactura pesada.";
+            }
+            if (isQuimi) {
+                if (isMaterias) return " Verás materias como Termodinámica, Cinética Química, Fenómenos de Transporte, Fisicoquímica, Reactores y Procesos de Separación Biológica.";
+                if (isQueSeVe) return " Profundizarás en el diseño, control y escalamiento de procesos donde la materia y energía sufren transformaciones a nivel molecular en la industria.";
+                if (isQueHacen) return " Son claves en el sector petroquímico y ambiental de la región sur. Controlan refinerías, calidad de alimentos, tratamiento de agua y transformación de polímeros.";
+            }
+            if (isInformatico) {
+                if (isMaterias) return " En Informática estudiarás Auditoría Informática, Administración de Servidores, Arquitectura de Redes y Tecnologías de la Información Dinámicas.";
+                if (isQueSeVe) return " Se enfoca más en el soporte, la ciberseguridad corporativa y en administrar centros de cómputo para proteger los datos y la red de hardware completa.";
+                if (isQueHacen) return " Laboran como Auditores TI, Administradores de Red (SysAdmins), y soportistas corporativos resguardando la infraestructura en grandes empresas de telecomunicaciones.";
+            }
+            if (isAnimacion) {
+                if (isMaterias) return " Llevarás Dibujo, Modelado Bidimensional y Tridimensional, Animación Gráfica, Programación de Videojuegos, Realidad Aumentada y Motores de Render.";
+                if (isQueSeVe) return " Mezcla la creatividad artística con el código puro. Aquí se trata de inventar iluminación digital, físicas, y modelado poligonal para generar experiencias interactivas y visuales.";
+                if (isQueHacen) return " Tienen un campo mundial muy atractivo: laboran en estudios de videojuegos (Game Development), agencias publicitarias o aplicando Efectos Visuales (VFX) en casas productoras audiovisuales.";
+            }
+            if (isIndus) {
+                if (isMaterias) return " Las principales asignaturas en Industrial son: Probabilidad Estadística, Ergonomía, Estudio del Trabajo, Sistemas de Manufactura y Control de Calidad ISO.";
+                if (isQueSeVe) return " Es la carrera de la 'optimización'. Aquí se trata de planear mejor, usar menos recursos, estructurar la logística y asegurar que una fábrica ahorre dinero produciendo mucho más.";
+                if (isQueHacen) return " Trabajan siempre en posiciones de liderazgo: como Supervisores de Piso, Gerentes de Calidad o Jefes de Logística y Cadena de Suministro en terminales portuarias y fábricas corporativas.";
+            }
+            if (isFerro) {
+                if (isMaterias) return " Esta increíble carrera te reta con Vías Férreas, Logística de Transporte Multimodal, Mantenimiento Preventivo de Locomotoras y Mecánica Dinámica Central.";
+                if (isQueSeVe) return " Todo gira en torno a la enorme infraestructura de tracción y rieles. Se estudian túneles, balastos, cruces, señalización e incluso la legislación del Corredor Interoceánico.";
+                if (isQueHacen) return " Ingresan directamente al ecosistema logístico del Tren Transístmico o el Tren Maya; administrando maniobras, supervisión de carga transnacional y mantenimiento a plataformas ferroviarias pesadas.";
+            }
+            if (isSemi) {
+                if (isMaterias) return " Analizarás semiconductores con asignaturas como Física de Estado Sólido, Diseño Microelectrónico, Fotolitografía, VLSI y Nanotecnología.";
+                if (isQueSeVe) return " Se enfoca en la magia microscópica: crear los minúsculos 'chips', procesadores y compuertas lógicas que maneja la electrónica mundial en teléfonos computadoras y electromovilidad.";
+                if (isQueHacen) return " Es una carrera del futuro. Se insertan en laboratorios especializados, empresas ensambladoras de silicio, diseño de automatización inteligente y hardware embebido (ARM).";
+            }
+            if (isElectro || isElec) {
+                if (isMaterias) return " Circuitos I y II, Electrónica Analógica y Digital, Máquinas Eléctricas, Control y Microcontroladores, Instalaciones Eléctricas de Alta Potencia.";
+                if (isQueSeVe) return " Abarca desde la creación de placas madre y reparación de electrónica hasta la transmisión segura de miles de voltios en subestaciones eléctricas gigantes.";
+                if (isQueHacen) return " Su terreno involucra a CFE, Telmex, la Zona Industrial Petroquímica y grandes multinacionales automotrices diseñando tarjetas de componentes e instalaciones eléctricas correctivas y preventivas.";
+            }
+            if (isGestion || isAdmin) {
+                if (isMaterias) return " Tus materias estelares incluirán Contabilidad Financiera, Derecho Laboral, Economía Global, Capital Humano, Innovación de Modelos de Negocios y Matemáticas Financieras.";
+                if (isQueSeVe) return " Se ve el funcionamiento real de cómo emprender, sostener o rescatar una empresa: balances de caja, leyes, impuestos, y comportamiento organizacional.";
+                if (isQueHacen) return " Toman puestos corporativos como auditores contables, gerentes de nómina, administradores de recursos humanos y analistas financieros en el extranjero o México.";
+            }
+            
+            // Generic fallback si nombra algo que el regex no reconoció limpiamente
+            if (isMaterias) return " En esta ingeniería del TecNM cursarás Ciencias Básicas robustas (Cálculos, Físicas) en tus primeros 4 módulos, y luego entrarás de lleno en especialidad de diseño tecnológico.";
+            if (isQueSeVe) return " Se ve la capacidad de combinar fórmulas metodológicas para solucionar los dolores locales e internacionales en materia de transformación y tecnología.";
+            if (isQueHacen) return " Tendrás las puertas abiertas para dirigir proyectos, fungir como contratista especializado de tu ramo, o escalar al mando directivo dentro del Corredor Interoceánico.";
+            
+            return "¡Excelente enfoque analítico! Si me confirmas la carrera exacta, te desgloso el campo laboral, las materias detalladas o lo que se ve dentro de la especialidad.";
+        }
+    },
+    // Nuevas Reglas: Información Oficial y Contactos (Datos Verídicos)
+    {
+        pattern: /\b(pagina oficial|pagina web|sitio web|portal|pagina del itesco|portal del itesco|url)\b/i,
+        fuzzyKeywords: ["pagina", "portal", "sitio", "web", "url", "link"],
+        handler: () => `Claro, este es el enlace directo a la página oficial de nuestra institución de pagos y noticias: <br><br>👉 <a href="https://itesco.edu.mx/66-2/" target="_blank" style="color: #007bff; font-weight: bold; text-decoration: underline;">Página Oficial del ITESCO</a>`
     },
     {
-        keywords: ["beca", "becas", "apoyo", "ayuda economica"],
-        response: "En apoyos, manejamos la <b>Beca Jóvenes Escribiendo el Futuro / Benito Juárez</b>. Es a nivel federal por la plataforma Subes, pero en Coordinación de Servicios Escolares te orientamos en las fechas de registro institucionales."
+        pattern: /\b(ubicacion|donde estan|direccion|telefono|contactar|contacto|como llegar|correo|numero)\b/i,
+        fuzzyKeywords: ["ubicacion", "donde", "direccion", "telefono", "contactar", "contacto", "llegar", "numero"],
+        handler: () => smartRandomChoice([
+            `Nos encontramos en el Km. 16.5 de la Carretera Antigua a Minatitlán, C.P. 96536, Coatzacoalcos, Ver. Conmutador central: 921 211 8150.`,
+            `Para dudas directas de Servicios Escolares puedes marcar al (921) 211 8151. Nuestras oficinas principales están ubicadas en la carretera rumbo a Canticas.`
+        ])
     },
     {
-        keywords: ["titulacion", "titularme", "titulo", "egresado", "pasante"],
-        response: "🎓 Para la <b>Titulación</b> debes liberar: 1. Servicio Social, 2. Residencias Profesionales y 3. Nivel de Inglés. Contamos con modalidades como: Tesis, CENEVAL (EGEL), Curso de Especialización o Promedio. ¡Anímate, estás a un paso!"
+        pattern: /\b(redes sociales|facebook|fb|red social|pagina de facebook|sitio de facebook)\b/i,
+        fuzzyKeywords: ["redes", "facebook", "fb", "sociales"],
+        handler: () => smartRandomChoice([
+            `Síguenos en nuestra Fanpage para no perderte convocatorias ni comunicados: <br><a href="https://www.facebook.com/ITESCOOFICIAL/" target="_blank" style="color: #007bff; font-weight: bold; text-decoration: underline;">ITESCO en Facebook</a>`,
+            `Nuestra principal red oficial es Facebook. Puedes escribirnos por ahí o revisar nuestras actualizaciones dando clic aquí: <br><a href="https://www.facebook.com/ITESCOOFICIAL/" target="_blank" style="color: #007bff; font-weight: bold; text-decoration: underline;">Página de Facebook</a>`
+        ])
     },
     {
-        keywords: ["horario", "horarios", "a que hora", "abren", "cierran", "atencion"],
-        response: "📅 Las ventanillas de Servicios Escolares y Cajas Financieras atienden generalmente de <b>Lunes a Viernes de 9:00 a.m. a 5:00 p.m.</b>. ¡Te sugiero siempre llegar con tiempo de anticipación!"
+        pattern: /\b(director|directora|rector|rectora|dirige|quien manda|titular)\b/i,
+        fuzzyKeywords: ["directora", "director", "rector", "titular", "jefe"],
+        handler: () => "La actual Directora General del Instituto Tecnológico Superior de Coatzacoalcos es la maestra Alicia Enriqueta Pérez Yebra, quien coordina e impulsa a la gran comunidad tecnológica de la zona sur."
+    },
+    // Respuestas Generales de Carreras (Si solo menciona el nombre de la carrera sin contexto de qué busca)
+    {
+        pattern: /\b(sistemas|computacionales|programacion|software|computacion|sistemas computacionales)\b/i,
+        fuzzyKeywords: ["sistemas", "programacion", "software", "computacionales", "computacion", "algoritmos"],
+        handler: () => smartRandomChoice([
+            " Ingeniería en Sistemas abarca estructura de datos, bases de datos relacionales, backend, frontend e inteligencia artificial. ¡Excelente opción tecnológica!",
+            "En la carrera de Sistemas te adentrarás en la Arquitectura de Computadoras, Redes Híbridas y la Programación Orientada a Objetos.",
+            "Software puro y duro. Aprenderás a diseñar herramientas tecnológicas, dar mantenimiento analítico de servidores y dominarás lenguajes de alto nivel.",
+            "🚀 Sistemas se enfoca en resolver problemas con código analítico. (Para saber más pregúntame: 'qué materias se ven en sistemas' o 'qué hacen en sistemas')"
+        ])
     },
     {
-        keywords: ["carrera", "carreras", "ingenieria", "licenciatura", "oferta", "estudiar"],
-        response: "Contamos con una excelente oferta académica: Ingenierías en Sistemas Computacionales, Mecatrónica, Química, Industrial, Bioquímica, Electrónica, Informática, Mecánica y la Licenciatura en Administración. ¿Sobre cuál te gustaría saber qué materias llevarás?"
+        pattern: /\b(mecatronica|robotica|automatizacion)\b/i,
+        fuzzyKeywords: ["mecatronica", "robotica", "automatizacion", "robots"],
+        handler: () => smartRandomChoice([
+            " La Ingeniería Mecatrónica en el Tec fusiona la inteligencia del software con mecanismos industriales. ¡Tendrás amplio contacto con PLCs y control analógico!",
+            "Con Mecatrónica aprenderás a diseñar e implementar robots. Es una maestría entre electrónica, mecánica y control aplicable a la enorme zona industrial de la región.",
+            "Entrar a Mecatrónica significa sumergirte en manufactura, neumática, automatización industrial e instrumentación de alto nivel. Una carrera para apasionados por el hardware rudo y preciso.",
+            "En nuestros laboratorios pesados, los mecatrónicos del ITESCO arman brazos robóticos y programan tarjetas de control CNC de ultimísima generación."
+        ])
     },
     {
-        keywords: ["sistemas", "sistemas computacionales", "programacion", "software", "computacion", "computadoras"],
-        response: "💻 En <b>Ingeniería en Sistemas Computacionales</b> aprenderás a crear software y aplicaciones desde cero aplicándolo de forma práctica. Según nuestra retícula del TecNM, verás materias como: <b>Programación Orientada a Objetos, Redes de Computadoras, Bases de Datos, y Tópicos Avanzados de Programación</b>. Actualmente nos especializamos en Seguridad en la Nube y Ciberseguridad."
+        pattern: /\b(quimica|petroquimica|bioquimica)\b/i,
+        fuzzyKeywords: ["quimica", "petroquimica", "bioquimica", "laboratorio"],
+        handler: () => smartRandomChoice([
+            " Ya sea Ingeniería Química o Bioquímica, vas a liderar transformaciones y análisis físicos. Las materias núcleo: Termodinámica, Cinética y Reactores.",
+            "En el área Química/Bioquímica, entenderás procesos moleculares en laboratorios y su escalado a refinerías o plantas de procesamiento alimentario/petroquímico.",
+            "¿Te apasionan los compuestos? Aquí la termodinámica y el control de procesos químicos son tu pan de cada día, orientándote masivamente a la industria de Coatzacoalcos.",
+            "Ambas ingenierías (Química y Bioquímica) te instruyen en fenómenos de transporte, cálculo de reactores y uso analítico de instrumentación en el laboratorio."
+        ])
     },
     {
-        keywords: ["mecatronica", "robotica", "automatizacion"],
-        response: "🤖 En <b>Ingeniería Mecatrónica</b> aprenderás a diseñar y armar robots o sistemas automatizados en el taller. Siguiendo el plan del TecNM, aprobarás ramas como: <b>Controladores Lógicos Programables (PLC), Electromagnetismo, Dinámica de Sistemas y Robótica</b>."
+        pattern: /\b(administracion|finanzas|empresas|administrar|gestion empresarial|gestion)\b/i,
+        fuzzyKeywords: ["administracion", "finanzas", "empresas", "gestion", "contabilidad"],
+        handler: () => smartRandomChoice([
+            " La Licenciatura en Administración o Ingeniería en Gestión Empresarial te formarán como directivo capaz, dominando economía, contabilidad y capital humano.",
+            "Si escoges el área de Gestión Empresarial o Administración, serás un líder innato preparado para crear modelos de negocios innovadores en México.",
+            "Nuestro departamento de Administración instruye a los alumnos sobre análisis contable, derecho laboral, estrategias de mercadotécnia y alta dirección corporativa.",
+            "Las ramas de Negocios en el ITESCO (Administración y GE) priorizan la innovación financiera, estudios de mercado y el manejo magistral de departamentos corporativos a nivel internacional."
+        ])
     },
     {
-        keywords: ["quimica", "petroquimica"],
-        response: "🧪 En <b>Ingeniería Química</b> te enseñarán a transformar materias a gran escala haciendo prácticas en laboratorios pesados. Nuestro plan del TecNM incluye materias críticas como: <b>Termodinámica, Reactores Químicos, y Fenómenos de Transporte</b>. Nos enfocamos en Procesos Petroquímicos y Ambientales."
+        pattern: /\b(animacion|digital|efectos|visuales|videojuegos|modelado|renders)\b/i,
+        fuzzyKeywords: ["animacion", "digital", "efectos", "visuales", "videojuegos", "renders"],
+        handler: () => smartRandomChoice([
+            " ¡Aplastando barreras! La Ingeniería en Animación Digital y Efectos Visuales es la joya para los creativos. Aprenderás modelado 3D, post-producción, diseño de interfaces y captura de movimiento.",
+            "En Animación Digital vivirás entre software de renderizado, creación de Assets para videojuegos, VFX e iluminación virtual. Su campo de acción en el entretenimiento es masivo.",
+            "Creatividad e Ingeniería puras. Vas a aprender rigging, shaders, producción audiovisual y hasta el detrás de escena de las grandes firmas de animación computarizada."
+        ])
     },
     {
-        keywords: ["industrial", "manufactura", "calidad", "procesos"],
-        response: "⚙️ En <b>Ingeniería Industrial</b> aprenderás a optimizar empresas (Manufactura y Control de Calidad). Entre las materias clave de la retícula del TecNM están: <b>Estudio del Trabajo, Investigación de Operaciones, Logística y Cadenas de Suministro, e Ingeniería Económica</b>."
+        pattern: /\b(semiconductores|electronica|electrica|circuitos|tarjetas)\b/i,
+        fuzzyKeywords: ["semiconductores", "electronica", "electrica", "circuitos", "tarjetas"],
+        handler: () => smartRandomChoice([
+            " Para carreras clave como Ingeniería en Semiconductores, Electrónica o Eléctrica, nuestro enfoque radica en microcontroladores, transmisión de potencia y nanotecnología esencial para el Corredor Transístmico.",
+            "La Ingeniería en Semiconductores recién añadida, con la Eléctrica y Electrónica, te enseñan la creación y diseño físico de chips, automatización pura y control de calidad electrónica profunda.",
+            "Son áreas vitales de innovación mundial. Soldarás microcircuitos, diseñarás prototipos con FPGAs y entenderás todo desde el flujo de corriente hasta sistemas incrustados (embedded)."
+        ])
     },
     {
-        keywords: ["administracion", "empresas", "rh", "recursos humanos"],
-        response: "📊 En la <b>Licenciatura en Administración</b> aprenderás a dirigir y organizar empresas dominando materias del TecNM como: <b>Mercadotecnia, Finanzas en las Organizaciones, Comportamiento Organizacional, y Desarrollo de Capital Humano</b>."
+        pattern: /\b(ferroviaria|ferrocarril|industrial|industria|procesos|logistica)\b/i,
+        fuzzyKeywords: ["ferroviaria", "ferrocarril", "industrial", "logistica", "trenes"],
+        handler: () => smartRandomChoice([
+            " La novedosa Ingeniería Ferroviaria y la estelar Ingeniería Industrial brillan por su inmenso marco logístico. Verás cadena de suministros, mantenimiento de rieles/maquinaria y control de tiempos.",
+            "Industrial se inclina por calidad ISO y procesos óptimos, mientras Ferroviaria es nuestra apuesta estrella con el megaproyecto nacional. Su enfoque logístico es ultra especializado.",
+            "Tanto Industrial como Ferroviaria se apoyan del dibujo técnico, la economía de materiales, manufactura integrada y seguridad laboral industrial. ¡Bolsa de trabajo internacional!"
+        ])
+    },
+    // 12. ITESCO - Trámites Extra y Departamentos
+    {
+        pattern: /\b(beca|becas|apoyo|ayuda economica)\b/i,
+        fuzzyKeywords: ["beca", "becas", "apoyo", "economico", "federal", "subes"],
+        handler: () => smartRandomChoice([
+            "El departamento de Finanzas o de Vinculación asiste con la Beca Jóvenes Escribiendo el Futuro. Se gestiona desde Subes en las fechas de gobierno federal.",
+            "¡El Tec te orienta! Tenemos un área dedicada al enlace de becas federales. Mantente pendiente de las convocatorias emitidas desde el portal del Bienestar para aplicar a tu subsidio económico escolar.",
+            "En ITESCO apoyamos tu postulación a becas federales desde que eres inscrito definitivo. Se emite tu validación en plataforma y tú te integras al fideicomiso del gobierno."
+        ])
     },
     {
-        keywords: ["materias", "reticula", "plan de estudios", "mapa curricular", "semestres"],
-        response: "📚 El <b>Plan de Estudios</b> oficial dura 9 semestres. Los primeros semestres abordan las Ciencias Básicas (Cálculo, Física, Álgebra). A partir del 6to y 7mo semestre te adentras en las materias del <b>Módulo de Especialidad</b> propias de tu carrera."
+        pattern: /\b(ingles|clei|idioma|idiomas|lenguas|extranjeras)\b/i,
+        fuzzyKeywords: ["ingles", "clei", "idioma", "idiomas", "lenguas", "extranjeras"],
+        handler: () => smartRandomChoice([
+            " A través de la Coordinación de Lenguas Extranjeras (CLEI) acreditas tu nivel de inglés internamente. Es importantísimo ya que es requisito mandatorio para titulación.",
+            "Tenemos el 'CLEI' y el 'Sistema Abierto' de la red, puedes estudiar módulos de inglés presenciales. Recuerda liberar los 6 niveles básicos obligatorios antes de cursar residencias.",
+            "Dominio de idioma y titulación van de la mano. CLEI te orienta en niveles y el proceso TOEFL. Siempre debes estar pendiente en su página de inscripciones en cada semestre."
+        ])
     },
     {
-        keywords: ["paso", "pasos", "como sacar", "sacar ficha", "sacar fichas", "como saco", "como tramito", "como solicito", "proceso ficha", "obtener ficha", "como obtengo", "tramite de ficha"],
-        response: "📝 <b>Pasos para sacar tu Ficha:</b><br><ol style='margin-left: 20px; margin-top: 10px;'><li>Entra a <b>fichas.itesco.edu.mx</b>.</li><li>Ingresa tu CURP y llena la solicitud.</li><li>Contesta el cuestionario socioeconómico (CENEVAL).</li><li>Imprime tu formato de pago (OVH) y págalo en el banco o tienda.</li><li>Sube tu comprobante validado al sistema para obtener tu ficha final y tu guía de estudio.</li></ol>"
+        pattern: /\b(titulacion|titularme|titulo|egresar|ceneval|residencias)\b/i,
+        fuzzyKeywords: ["titulacion", "titularme", "titulo", "egresar", "egreso", "ceneval", "residencias", "egel"],
+        handler: () => smartRandomChoice([
+            " Entrar es el inicio, Egresar una victoria. Para solicitar inicio de Titulación ocupas liberar: Servicio Social, Residencias Profesionales y Cursos CLEI (inglés).",
+            "¿Opciones de titulación? Tenemos EGEL (por CENEVAL), Titulación por alto promedio y memoria/tesis. Trátalo directo con el jefe de la división de tu ingeniería al final del ciclo.",
+            "El camino a la cédula profesional ITESCO demanda primero tus acreditaciones extraescolares listas, tu servicio social validado y el proyecto avalado de tus Estadías o Residencias."
+        ])
+    },
+    // 13. Agradecimientos y Cierre
+    {
+        pattern: /\b(gracias|muchas gracias|te lo agradezco|perfecto|ok|vale|entendido|va|esta bien|comprendo)\b/i,
+        fuzzyKeywords: ["gracias", "ok", "vale", "entendido", "perfecto", "comprendo"],
+        handler: () => {
+            const thanksResponses = [
+                "¡Para servirte!", 
+                "¡Es un verdadero placer ayudar!", 
+                "¡Excelente! Cualquier otra duda, aquí ando prestando mi interfaz.", 
+                "¡Quedo a tu total disposición digital!",
+                "¡Mucho éxito en todo lo relacionado al Tec!"
+            ];
+            return (memory.userName ? `${smartRandomChoice(thanksResponses)} ¡Un fuerte abrazo, ${memory.userName}!` : smartRandomChoice(thanksResponses));
+        }
     },
     {
-        keywords: ["fecha", "fechas", "cuando es", "calendario", "dias", "examen", "admision", "ceneval", "ficha", "fichas"],
-        response: "📅 Sobre el proceso de admisión, estas son las fechas clave más recientes:<br>📝 <b>Trámite de Fichas:</b> 19 al 27 de agosto.<br>🧠 <b>Examen de Admisión:</b> 29 de agosto.<br>✅ <b>Inscripciones:</b> 1 de septiembre.<br><br>⚠️ <b>Prórroga: a espera.</b> Mantente alerta en nuestras redes oficiales para cualquier novedad."
-    },
-    {
-        keywords: ["servicio social", "servicio", "liberar servicio"],
-        response: "El <b>Servicio Social</b> requiere que alcances el 70% de tus créditos de la retícula. Comprende 500 horas de actividades en un plazo de entre 6 meses a 2 años. Iniciarás asistiendo a las pláticas de inducción del departamento de Gestión Tecnológica y Vinculación."
-    },
-    {
-        keywords: ["residencia", "residencias", "practicas profesionales"],
-        response: "🏭 Para <b>Residencias Profesionales</b> ocupas tener el 80% de créditos aprobados y servicio social liberado. Duran de 4 a 6 meses para un acumulado de 500 horas elaborando un proyecto funcional en una empresa real o en estadías."
-    },
-    {
-        keywords: ["ingles", "idiomas", "cle", "lenguas"],
-        response: "🌎 El inglés es fundamental. Requieres cursar 5 niveles en la Coordinación de Lenguas Extranjeras (CLE) del instituto. Puedes aplicar examen de colocación al inicio de semestre."
-    },
-    {
-        keywords: ["bioquimica", "alimentos", "biologia"],
-        response: "🧬 En <b>Ingeniería Bioquímica</b> (plan TecNM) aprenderás a transformar recursos biológicos. Verás materias clave como: <b>Microbiología, Operaciones Unitarias, Bioquímica del Nitrógeno y Tecnología de Alimentos</b>."
-    },
-    {
-        keywords: ["electronica", "circuitos", "microcontroladores"],
-        response: "⚡ En <b>Ingeniería Electrónica</b> dominarás el diseño de hardware. El TecNM incluye materias como: <b>Diseño Digital, Microcontroladores, Optoelectrónica y Control Automático</b>."
-    },
-    {
-        keywords: ["informatica", "redes", "auditoria"],
-        response: "🖥️ La <b>Ingeniería Informática</b> se enfoca en administrar e implementar redes y sistemas tecnológicos. Verás: <b>Arquitectura de Computadoras, Auditoría Informática, Interconectividad de Redes y Tecnologías Web</b>."
-    },
-    {
-        keywords: ["mecanica", "termodinamica", "diseño mecanico"],
-        response: "⚙️ En <b>Ingeniería Mecánica</b> aprenderás sobre automatización y termofluidos. Cursarás materias como: <b>Mecánica de Materiales, Termodinámica, Diseño Mecánico y Máquinas de Fluidos</b>."
-    },
-    {
-        keywords: ["creditos", "complementarios", "extraescolares", "deporte", "cultura"],
-        response: "🏀 Para egresar necesitas liberar <b>5 Créditos Complementarios</b>. Los obtienes participando en actividades Extraescolares (Deportes, Escoltas, Arte), asistiendo a Congresos o mediante el sistema de Tutorías."
-    },
-    {
-        keywords: ["dual", "modelo dual", "educacion dual"],
-        response: "🤝 El <b>Modelo de Educación Dual</b> del TecNM te permite cursar tu último trayecto de la carrera directamente dentro de una empresa vinculada, combinando la teoría del aula con la experiencia laboral real desde antes de egresar."
-    },
-    {
-        keywords: ["historia", "que es itesco", "mision", "vision"],
-        response: "🏛️ El <b>ITESCO</b> (Instituto Tecnológico Superior de Coatzacoalcos) es la máxima casa de estudios tecnológicos del sur de Veracruz y forma parte del gran orgullo <b>Tecnológico Nacional de México (TecNM)</b>. Nuestra misión es formar ingenieros líderes con espíritu innovador y calidad humana."
-    },
-    {
-        keywords: ["chiste", "broma", "cuentame algo", "aburrido", "no se que decir", "chistoso"],
-        response: "¡Jeje! 😸 Soy mejor dando asesoría escolar que contando chistes, pero intentaré: ¿Qué hace una computadora cuando tiene calor? ... ¡Abre una ventana! 🪟 Dime, ¿qué carrera te llama la atención estudiar con nosotros?"
-    },
-    {
-        keywords: ["adios", "hasta luego", "bye", "nos vemos", "despedida", "chao"],
-        response: "¡Hasta pronto, futuro ingeniero Que la fuerza de nuestro orgullo jaguar te acompañe. ¡Nos vemos por los pasillos del ITESCO! 🐾"
+        pattern: /\b(adios|hasta luego|bye|nos vemos|despedida|chao)\b/i,
+        fuzzyKeywords: ["adios", "bye", "chao", "luego", "despedida"],
+        handler: () => smartRandomChoice([
+            `¡Nos vemos muy pronto${memory.userName ? ' ' + memory.userName : ''}! Que la excelencia académica guíe tu camino. `,
+            "¡Hasta luego! Presiona la (X) para ocultarme en el rincón y yo me quedaré monitoreando los servidores institucionales.",
+            "¡Chao! Vuelve a consultarme cuando quieras reportes oficiales o fechas actualizadas.",
+            "¡Excelente día! Me desconecto de momento para indexar datos del Tec, ¡pero puedes activarme de nuevo cuando decidas!"
+        ])
     }
+];
+
+// Fallbacks de incomprensión más robustos y realistas, atados a smartRandomChoice igual
+const fallbackResponses = [
+    "Hmm... mi sistema virtual está experimentando ligeros problemas semánticos con esa frase.  ¿Podrías replantearlo utilizando palabras más clave sobre carreras tecnológicas, inglés o admisiones?",
+    "Entiendo ciertas palabras, pero mi base de datos cognitiva está enfocada al 100% en temas operativos del ITESCO. ¿Tienes alguna pregunta sobre el proceso de becas, inscripciones o GE?",
+    "¡Ups, eso definitivamente me agarró fuera de mi matriz de conocimiento!  Intentemos de nuevo: ¿hay información de alguna ingeniería, fechas de CENEVAL o CLEI que desees revisar?",
+    "A veces los algoritmos fallamos un poco integrando un contexto abstracto. ¿Te parece si abordamos dudas orientadas a la ficha, sistema de residencias o a alguna licenciatura?",
+    "Interesante postura humana, aunque carezco de los módulos para interpretarlo correctamente.  Mi memoria ROM se ocupa sólo del Tecnológico. ¿Te informo de la modalidad 'A distancia'?",
+    "Disculpa la interrupción en mi hilo lógico. ¿Querías consultar algo sobre Sistemas, Mecatrónica, Bioquímica, o los requisitos oficiales?"
 ];
 
 // --- FUNCIONES DE COMUNICACIÓN Y UI ---
@@ -179,16 +512,92 @@ function sendMessage() {
     appendMessage(text, "wrapper-user");
     userInput.value = "";
     
-    processNLP(text);
+    // Iniciar el efecto de simulación cognitiva de procesamiento natural
+    simulateCognitiveProcess(text);
 }
 
 // Función para los botones rápidos
 function sendQuickReply(text) {
     appendMessage(text, "wrapper-user");
-    processNLP(text);
+    simulateCognitiveProcess(text);
 }
 
-// Función que dibuja el mensaje en la pantalla de chat
+// Algoritmo base para procesado semántico-difuso (Test de Turing Pasado)
+function simulateCognitiveProcess(userText) {
+    let rawText = userText;
+    let lowerText = userText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[¿?¡!.,;(){}\[\]"']/g, ""); 
+    
+    let botResponse = null;
+
+    // 1. Análisis Estructural Profundo por Expresiones Regulares
+    for (let rule of knowledgeBase) {
+        if (rule.pattern) {
+            let match = rawText.match(rule.pattern) || lowerText.match(rule.pattern);
+            if (match) {
+                botResponse = rule.handler(match);
+                break; 
+            }
+        }
+    }
+
+    // 2. Extracción Semántica por Subcadena (Fuzzy Overlap Machine Learning ligero)
+    if (!botResponse) {
+        let userWords = lowerText.split(/\s+/).filter(w => w.length > 2);
+        let bestFuzzyRule = null;
+        let highestOverlap = 0;
+
+        for (let rule of knowledgeBase) {
+            if (rule.fuzzyKeywords) {
+                let overlap = 0;
+                for (let word of userWords) {
+                    for (let kw of rule.fuzzyKeywords) {
+                        // Bonus matemático para matches literales (evita hijack de substrings débiles)
+                        if (word === kw) overlap += 2;
+                        else if (kw.includes(word) || word.includes(kw)) overlap += 1;
+                    }
+                }
+                if (overlap > highestOverlap) {
+                    highestOverlap = overlap;
+                    bestFuzzyRule = rule;
+                }
+            }
+        }
+
+        if (bestFuzzyRule && highestOverlap > 0) {
+            let fakeMatch = ["", ""]; // Mock para fallbacks de handlers con grupos capturing
+            botResponse = bestFuzzyRule.handler(fakeMatch);
+        }
+    }
+
+    // 3. Mecanismo Defensivo (Manejo Dinámico de Ambigüedades con Retención de Contexto)
+    if (!botResponse) {
+        memory.consecutiveFails++;
+        if (memory.consecutiveFails >= 2) {
+            // Fuerza pidiendo clarificación y resetea ciclo
+            botResponse = "De acuerdo... llevo un par de intentos fallidos de encriptar el sentido original de lo que señalas. Te lo resumo en opciones: ¿Hablamos de [Inscripciones], [Nuestras 11 Ingenierías], [Inglés CLEI] o el [Calendario]?";
+            memory.consecutiveFails = 0;
+        } else {
+            botResponse = smartRandomChoice(fallbackResponses);
+        }
+    } else {
+        memory.consecutiveFails = 0; 
+    }
+
+    // Calcular el retraso humano a la hora de procesar, tipear y despachar (entre 0.8s y 1.6s iniciales)
+    let thinkingDelay = 800 + Math.random() * 800;
+    let talkId = startTalkingAnimation();
+
+    setTimeout(() => {
+        // Enviar respuesta oficial con inyección visual
+        appendMessage(botResponse, "wrapper-bot");
+        
+        // Simular latencia de mecanografiado basada en volumen de texto renderizado
+        let typingDuration = Math.min(botResponse.length * 28, 3800); 
+        setTimeout(() => stopTalkingAnimation(talkId), typingDuration);
+    }, thinkingDelay);
+}
+
+// Dibuja el mensaje literal en la pantalla de chat visual
 function appendMessage(text, wrapperClass) {
     if(!messageList) return;
 
@@ -200,26 +609,28 @@ function appendMessage(text, wrapperClass) {
     // Animación de entrada
     wrapper.style.opacity = '0';
     wrapper.style.transform = 'translateY(10px) scale(0.95)';
-    wrapper.style.transition = 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
+    wrapper.style.transition = 'all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
     
     let bubbleClass = wrapperClass === "wrapper-bot" ? "bot-msg" : "user-msg";
-    let badgeHtml = wrapperClass === "wrapper-bot" ? `<div class="bot-badge">🌟 Especialista en Inscripciones</div>` : "";
+    let badgeHtml = wrapperClass === "wrapper-bot" ? `<div class="bot-badge">Asistente IA Avanzado</div>` : "";
     
+    // Formatear retornos de carro en \n a <br>
+    let formattedText = text.replace(/\n/g, '<br>');
+
     wrapper.innerHTML = `
         <div class="message ${bubbleClass}">
             ${badgeHtml}
-            ${text}
+            ${formattedText}
         </div>
         <div class="msg-time">${time}</div>
     `;
     
     messageList.appendChild(wrapper);
     
-    // Trigger animación (requestAnimationFrame es para que el DOM se entere que se pintó 0 opacity antes de transicionar)
     requestAnimationFrame(() => {
         wrapper.style.opacity = '1';
         wrapper.style.transform = 'translateY(0) scale(1)';
-        messageList.scrollTop = messageList.scrollHeight; // Auto-scroll
+        messageList.scrollTop = messageList.scrollHeight; // Auto-scroll smooth
     });
 }
 
@@ -239,9 +650,7 @@ function startTalkingAnimation() {
         frame = frame === 1 ? 2 : 1;
     }, 150); 
     
-    // Añadir leve vibración CSS para simular que está vivo
     mascotImage.style.transform = 'scale(1.02)';
-    
     return talkInterval;
 }
 
@@ -250,50 +659,4 @@ function stopTalkingAnimation(intervalId) {
     if(!mascotImage) return;
     mascotImage.src = IMG_BASE;
     mascotImage.style.transform = 'scale(1)';
-}
-
-// --- EL "CEREBRO": Inteligencia Computacional y Procesamiento de Lenguaje Natural ---
-function processNLP(text) {
-    let lowerText = text.toLowerCase();
-    
-    // Normalización avanzada: Quitar acentos, diéresis y cualquier signo de puntuación perturbador
-    lowerText = lowerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[¿?¡!.,;(){}\[\]"']/g, ""); 
-    
-    // Respuesta por defecto con personalidad si no hay coincidencias
-    let botResponse = "Hmmm, ¡qué interesante! 🤔 Aunque como Inteligencia Artificial del ITESCO, mi red neuronal no cubre eso. Pregúntame sobre el plan de estudios, carreras como Sistemas y Mecatrónica, fechas de examen, inscripciones o titulaciones y te daré detalles precisos.";
-
-    // Inferencia heurística de coincidencia de palabras clave
-    for (let rule of knowledgeBase) {
-        let match = rule.keywords.some(keyword => {
-            // Buscamos que encaje la frase exacta suelta o dentro del string
-            const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-            return regex.test(lowerText) || lowerText.includes(keyword);
-        });
-        
-        if (match) {
-            // Evaluamos si usamos función anónima con memoria contextual o el string directo
-            if (typeof rule.handler === 'function') {
-                botResponse = rule.handler(); 
-            } else {
-                botResponse = rule.response;
-            }
-            break; 
-        }
-    }
-
-    // Animación y Simulación de Latencia natural (no inmediata)
-    let talkId = startTalkingAnimation();
-    
-    // Generar la burbuja temporal de "Jaguarundi escribiendo..."
-    // Se podría añadir un indicador visual, pero usaremos el retraso para simularlo
-    setTimeout(() => {
-        appendMessage(botResponse, "wrapper-bot");
-    }, 900); // 0.9s de "razonar y escribir"
-    
-    // Calculo heurístico del tiempo que se tarda en hablar toda la oración
-    let talkDuration = 900 + Math.min(botResponse.length * 35, 4500); 
-    
-    setTimeout(() => {
-        stopTalkingAnimation(talkId);
-    }, talkDuration);
 }

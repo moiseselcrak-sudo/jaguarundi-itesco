@@ -33,22 +33,87 @@
         }
 
         body {
-            /* Vibrant Mesh Gradient Background */
-            background: radial-gradient(circle at 15% 50%, rgba(27, 138, 98, 0.3), transparent 25%),
-                        radial-gradient(circle at 85% 30%, rgba(211, 84, 0, 0.25), transparent 25%),
-                        linear-gradient(135deg, var(--bg-body) 0%, #1e293b 100%);
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* MOCK ITESCO WEBSITE STYLES */
+        .mock-nav {
+            background: white;
+            padding: 15px 50px;
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            height: 100vh;
-            overflow: hidden;
-            animation: bgShift 20s infinite alternate ease-in-out;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 500;
         }
-
-        @keyframes bgShift {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
+        .mock-logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
+        .mock-logo img { height: 45px; }
+        .mock-links {
+            display: flex;
+            gap: 30px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .mock-links span { cursor: pointer; transition: color 0.3s; }
+        .mock-links span:hover { color: var(--accent); }
+        .mock-hero {
+            background: linear-gradient(135deg, rgba(17,92,65,0.85), rgba(27,138,98,0.9)), url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80') center/cover;
+            height: 550px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            padding: 0 20px;
+        }
+        .mock-hero-content h1 { font-size: 3.5rem; font-weight: 800; margin-bottom: 20px; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .mock-hero-content p { font-size: 1.2rem; max-width: 800px; margin: 0 auto 30px; line-height: 1.6; }
+        .mock-btn {
+            background: var(--accent);
+            color: white;
+            padding: 14px 35px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s, background 0.3s;
+        }
+        .mock-btn:hover { background: var(--accent-hover); transform: translateY(-3px); }
+        .mock-grid {
+            max-width: 1200px;
+            margin: -50px auto 100px;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            position: relative;
+            z-index: 10;
+        }
+        .mock-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border-top: 5px solid var(--primary-light);
+            transition: transform 0.3s;
+        }
+        .mock-card:hover { transform: translateY(-10px); }
+        .mock-card h3 { color: var(--primary); margin-bottom: 15px; font-size: 1.3rem; }
+        .mock-card p { color: var(--text-light); line-height: 1.6; }
 
         /* Contenedor Principal con Glassmorphism */
         .app-container {
@@ -65,7 +130,7 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             
             /* Hidden state features */
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) scale(0.9);
@@ -464,6 +529,63 @@
 </head>
 
 <body>
+
+    <!-- MOCK ITESCO WEBSITE BACKGROUND -->
+    <div class="mock-website">
+        <nav class="mock-nav">
+            <div class="mock-logo">
+                <img src="logo.png" alt="ITESCO Logo" onerror="this.src='jagu3.png'">
+                ITESCO Oficial
+            </div>
+            <div class="mock-links">
+                <span>Inicio</span>
+                <span>Oferta Educativa</span>
+                <span>Aspirantes</span>
+                <span>Alumnos</span>
+                <span>Contacto</span>
+            </div>
+        </nav>
+
+        <header class="mock-hero">
+            <div class="mock-hero-content">
+                <h1>Instituto Tecnológico Superior de Coatzacoalcos</h1>
+                <p>Formando líderes de excelencia académica e innovación tecnológica para el desarrollo del sureste de México. Descubre nuestras ingenierías diseñadas para el éxito global.</p>
+                <button class="mock-btn">Generar Ficha de Admisión</button>
+            </div>
+        </header>
+
+        <section class="mock-grid">
+            <div class="mock-card">
+                <h3>Ingeniería en Sistemas</h3>
+                <p>Desarrolla el futuro. Arquitectura de software, bases de datos e Inteligencia Artificial a tu alcance con los mejores laboratorios.</p>
+            </div>
+            <div class="mock-card">
+                <h3 style="color: var(--accent);">Mecatrónica</h3>
+                <p>Integra mecánica, electrónica y sistemas de control para automatizar la industria pesada y robótica en todo el Corredor Interoceánico.</p>
+            </div>
+            <div class="mock-card">
+                <h3>Gestión Empresarial</h3>
+                <p>Lidera empresas e industrias de todo el país hacia la innovación macro económica en una era altamente competitiva y globalizada.</p>
+            </div>
+            <div class="mock-card" style="margin-top:20px;">
+                <h3>Animación Digital</h3>
+                <p>Crea mundos increíbles. Estudia diseño 3D, VFX y programación orientada a videojuegos comerciales en nuestro laboratorio especializado.</p>
+            </div>
+            <div class="mock-card" style="margin-top:20px;">
+                <h3>Electrónica</h3>
+                <p>Desde la concepción minuciosa de microcontroladores hasta instalaciones electromagnéticas estructurales de alto voltaje en refinerías.</p>
+            </div>
+            <div class="mock-card" style="margin-top:20px;">
+                <h3 style="color: var(--accent);">Ferroviaria</h3>
+                <p>Únete a la nueva era del transporte nacional unificando la logística global con el funcionamiento, diseño y control de grandes vías.</p>
+            </div>
+        </section>
+        
+        <footer style="text-align:center; padding: 40px; color: #64748b; font-size: 0.9rem;">
+            © 2026 Instituto Tecnológico Superior de Coatzacoalcos. Todos los derechos reservados.
+        </footer>
+    </div>
+    <!-- END MOCK WEBSITE -->
 
     <!-- Chatbot Launcher -->
     <div class="chatbot-launcher" id="chatbotLauncher" onclick="toggleChatbot()">
