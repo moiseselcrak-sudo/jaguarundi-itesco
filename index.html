@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jaguarundi - Asistente Especializado ITESCO</title>
+    <style>
+        /* Importar fuente moderna y premium de Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        /* Variables de color y globales */
+        :root {
+            --primary: #115c41; /* Verde ITESCO Oscuro */
+            --primary-light: #1b8a62; /* Verde Vibrante ITESCO */
+            --accent: #d35400; /* Naranja Institucional Jaguarundi */
+            --accent-hover: #b34600;
+            --bg-body: #0d1b2a; /* Fondo escuro profundo (Dynamic) */
+            --bg-card: rgba(255, 255, 255, 0.92); /* Glassmorphism Panel */
+            --bg-mascot: rgba(235, 240, 244, 0.6); 
+            --text-main: #1e293b;
+            --text-light: #64748b;
+            --bot-bubble: #e8f5e9;
+            --user-bubble: #172554;
+            --glass-border: rgba(255, 255, 255, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            /* Vibrant Mesh Gradient Background */
+            background: radial-gradient(circle at 15% 50%, rgba(27, 138, 98, 0.3), transparent 25%),
+                        radial-gradient(circle at 85% 30%, rgba(211, 84, 0, 0.25), transparent 25%),
+                        linear-gradient(135deg, var(--bg-body) 0%, #1e293b 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            animation: bgShift 20s infinite alternate ease-in-out;
+        }
+
+        @keyframes bgShift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        /* Contenedor Principal con Glassmorphism */
+        .app-container {
+            width: 1000px;
+            height: 680px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 var(--glass-border);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            
+            /* Hidden state features */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 999;
+        }
+
+        .app-container.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Chatbot Launcher Styles */
+        .chatbot-launcher {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform 0.3s;
+        }
+
+        .chatbot-launcher.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px) scale(0.9);
+        }
+
+        .chatbot-launcher:hover {
+            transform: scale(1.05);
+        }
+
+        .launcher-icon {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 3px solid var(--primary-light);
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .launcher-text {
+            color: white;
+            background: var(--primary);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Close Button Styles */
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            line-height: 1;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: transform 0.2s, background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* Cabecera Atractiva */
+        .app-header {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 18px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            position: relative;
+            z-index: 10;
+        }
+
+        .app-header img {
+            width: 45px;
+            height: 45px;
+            object-fit: contain;
+            background: white;
+            border-radius: 12px;
+            padding: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.5s;
+        }
+
+        .app-header img:hover {
+            transform: rotate(360deg);
+        }
+
+        .app-header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header-online-indicator {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(255,255,255,0.15);
+            padding: 6px 12px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #4ade80;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Layout Grid de la Interfaz */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        /* Columna Izquierda: Mascota con Ambient Glow */
+        .mascot-panel {
+            flex: 0 0 38%;
+            background: var(--bg-mascot);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            position: relative;
+            border-right: 1px solid rgba(0,0,0,0.05);
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .mascot-glow {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(27,138,98,0.2) 0%, transparent 70%);
+            bottom: 10%;
+            z-index: 1;
+            filter: blur(20px);
+        }
+
+        .mascot-image {
+            width: 100%;
+            max-width: 300px;
+            max-height: 400px;
+            object-fit: contain;
+            z-index: 2;
+            filter: drop-shadow(0 15px 15px rgba(0,0,0,0.15));
+            transition: transform 0.2s ease-out;
+        }
+
+        /* Columna Derecha: Chat Area */
+        .chat-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: transparent;
+            position: relative;
+        }
+        
+        /* Chat Pattern Background Overlay */
+        .chat-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(var(--text-light) 1px, transparent 1px);
+            background-size: 24px 24px;
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Lista de Mensajes */
+        .message-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 1;
+            scroll-behavior: smooth;
+        }
+
+        .message-wrapper {
+            display: flex;
+            flex-direction: column;
+            max-width: 88%;
+            position: relative;
+        }
+
+        .wrapper-bot { align-self: flex-start; }
+        .wrapper-user { align-self: flex-end; align-items: flex-end; }
+
+        .message {
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 0.98rem;
+            line-height: 1.5;
+            color: var(--text-main);
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            transition: transform 0.2s ease;
+        }
+        .message:hover { transform: translateY(-2px); }
+
+        .bot-msg {
+            background-color: var(--bot-bubble);
+            border-top-left-radius: 4px;
+            border: 1px solid rgba(27, 138, 98, 0.15);
+        }
+
+        .bot-badge {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 6px rgba(17, 92, 65, 0.3);
+        }
+
+        .user-msg {
+            background: linear-gradient(135deg, var(--user-bubble), #1e3a8a);
+            color: white;
+            border-top-right-radius: 4px;
+            box-shadow: 0 6px 15px rgba(23, 37, 84, 0.2);
+        }
+
+        .msg-time {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 6px;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+
+        /* Área de Control Input */
+        .input-panel {
+            padding: 20px 25px;
+            background: rgba(255,255,255,0.7);
+            border-top: 1px solid rgba(0,0,0,0.05);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: white;
+            padding: 6px 6px 6px 16px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+        .input-row:focus-within {
+            box-shadow: 0 6px 20px rgba(17, 92, 65, 0.15);
+            border-color: var(--primary-light);
+        }
+
+        .input-row input {
+            flex: 1;
+            border: none;
+            font-size: 1rem;
+            outline: none;
+            background: transparent;
+            color: var(--text-main);
+        }
+        .input-row input::placeholder { color: #94a3b8; }
+
+        .input-row button {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: white;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(211, 84, 0, 0.3);
+        }
+
+        .input-row button:hover {
+            transform: scale(1.08) rotate(-10deg);
+            box-shadow: 0 6px 15px rgba(211, 84, 0, 0.4);
+        }
+        .input-row button svg { width: 20px; height: 20px; fill: currentColor; }
+
+        /* Chips / Píldoras de Respuestas Rápidas */
+        .quick-replies {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none; /* Firefox */
+        }
+        .quick-replies::-webkit-scrollbar { display: none; } /* Chrome */
+
+        .reply-btn {
+            background: white;
+            border: 1px solid var(--primary-light);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+
+        .reply-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(17, 92, 65, 0.2);
+            border-color: var(--primary);
+        }
+
+        /* Custom Scrollbar Chat */
+        .message-list::-webkit-scrollbar { width: 6px; }
+        .message-list::-webkit-scrollbar-track { background: transparent; }
+        .message-list::-webkit-scrollbar-thumb { 
+            background: rgba(148, 163, 184, 0.5); 
+            border-radius: 10px; 
+        }
+        .message-list::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); }
+
+        /* Estilos en enlaces HTML dentro del chat bot */
+        .bot-msg a {
+            transition: opacity 0.2s;
+        }
+        .bot-msg a:hover {
+            opacity: 0.8;
+            text-decoration: underline !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Chatbot Launcher -->
+    <div class="chatbot-launcher" id="chatbotLauncher" onclick="toggleChatbot()">
+        <img src="jagu_oculto.png" alt="Asistente Virtual Oculto" class="launcher-icon">
+        <span class="launcher-text">Asistente Virtual</span>
+    </div>
+
+    <div class="app-container" id="appContainer">
+        <header class="app-header">
+            <img src="logo.png" alt="Logo ITESCO" onerror="this.src='jagu3.png'">
+            <h1>Jaguarundi Inteligencia ITESCO</h1>
+            <div class="header-online-indicator">
+                <div class="status-dot"></div>
+                En Línea
+            </div>
+            <button class="close-btn" onclick="toggleChatbot()" aria-label="Cerrar">✖</button>
+        </header>
+
+        <main class="main-content">
+            <aside class="mascot-panel">
+                <div class="mascot-glow"></div>
+                <!-- Mascot Image -->
+                <img src="jagu3.png" alt="Jaguarundi Mascot" class="mascot-image" id="mascotImage">
+            </aside>
+
+            <section class="chat-panel">
+                <div class="message-list" id="messageList">
+                    <div class="message-wrapper wrapper-bot">
+                        <div class="message bot-msg">
+                            <div class="bot-badge">🌟 Especialista ITESCO</div>
+                            ¡Hola, aspirante y compañero! Soy <b>Jaguarundi</b> 👋. Tu Agente especializado en Inscripciones, Materias, Convocatorias y Fechas del ITESCO. ¿En qué maravilla académica te puedo ayudar hoy?
+                        </div>
+                        <div class="msg-time" id="initTime">12:00</div>
+                    </div>
+                </div>
+
+                <div class="input-panel">
+                    <div class="quick-replies">
+                        <button class="reply-btn" onclick="sendQuickReply('Fechas del examen 📅')">
+                            Fechas del examen 📅
+                        </button>
+                        <button class="reply-btn" onclick="sendQuickReply('Materias de Sistemas 💻')">
+                            Materias de Sistemas 💻
+                        </button>
+                        <button class="reply-btn" onclick="sendQuickReply('Requisitos Nuevo Ingreso 📝')">
+                            Requisitos Ingreso 📝
+                        </button>
+                    </div>
+
+                    <div class="input-row">
+                        <input type="text" id="userInput" placeholder="Pregunta sobre ingenierías, inscripciones, becas..." autocomplete="off" onkeypress="handleKeyPress(event)">
+                        <button onclick="sendMessage()" aria-label="Enviar">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Script Restored Logic -->
+    <script src="app.js"></script>
+    <script>
+        // Set initial time dynamically for the first message
+        const initialDate = new Date();
+        const elTime = document.getElementById('initTime');
+        if (elTime) elTime.innerText = initialDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    </script>
+</body>
+
+</html>
